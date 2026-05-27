@@ -12,7 +12,10 @@ dependencies = [
     "langchain (>=1.3.2,<2.0.0)",
     "langchain-google-genai (>=4.2.3,<5.0.0)",
     "openinference-instrumentation-langchain (>=0.1.66,<0.2.0)",
-    "arize-phoenix-otel (>=0.16.1,<0.17.0)"
+    "arize-phoenix-otel (>=0.16.1,<0.17.0)",
+    "arize-phoenix-client (>=2.7.0,<3.0.0)",
+    "google-generativeai (>=0.8.6,<0.9.0)",
+    "ipdb (>=0.13.13,<0.14.0)"
 ]
 
 
