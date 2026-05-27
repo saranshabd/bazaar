@@ -15,7 +15,8 @@ dependencies = [
     "arize-phoenix-otel (>=0.16.1,<0.17.0)",
     "arize-phoenix-client (>=2.7.0,<3.0.0)",
     "google-generativeai (>=0.8.6,<0.9.0)",
-    "ipdb (>=0.13.13,<0.14.0)"
+    "ipdb (>=0.13.13,<0.14.0)",
+    "openinference-instrumentation (>=0.1.52,<0.2.0)"
 ]
 
 
