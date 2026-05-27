@@ -21,6 +21,12 @@ Rules:
 """
 
 
+RegisteredPromptVersions = {
+    "GOOD": "UHJvbXB0VmVyc2lvbjoy",
+    "BAD": "UHJvbXB0VmVyc2lvbjoz",
+}
+
+
 def get_system_prompt(version_id: str) -> str:
     prompt = client.prompts.get(
         prompt_version_id=version_id,

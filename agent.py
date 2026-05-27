@@ -5,7 +5,7 @@ from langchain.agents import create_agent
 
 from openinference.instrumentation import using_prompt_template
 
-from prompt import get_system_prompt
+from prompt import get_system_prompt, RegisteredPromptVersions
 from tools import agent_tools
 
 # No need to configure API key since Phoenix is running locally.
@@ -18,8 +18,8 @@ model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
 )
 
-SYSTEM_PROMPT_TEMPLATE_VERSION = "UHJvbXB0VmVyc2lvbjoy"
-system_prompt = get_system_prompt(version_id=SYSTEM_PROMPT_TEMPLATE_VERSION)
+system_prompt_version = RegisteredPromptVersions["GOOD"]
+system_prompt = get_system_prompt(version_id=system_prompt_version)
 
 agent = create_agent(
     model=model,
@@ -31,7 +31,7 @@ agent = create_agent(
 def run_incident(question: str):
     with using_prompt_template(
         template=system_prompt,
-        version=SYSTEM_PROMPT_TEMPLATE_VERSION,
+        version=system_prompt_version,
         variables={}
     ):
         opt = agent.invoke(
