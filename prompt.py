@@ -1,48 +1,35 @@
 from phoenix.client import Client
 from phoenix.client.types import PromptVersion
+from phoenix.client.__generated__.v1 import PromptMessage
 
 client = Client(base_url="http://localhost:6006")
 
 
-SYSTEM_PROMPT = """
-You are an incident triage engineer.
-
-Your job is to identify likely causes of an onboarding incident using available tools.
-
-Rules:
-- Do not conclude after checking only one source.
-- Inspect alerts, recent deployments, and customer reports before diagnosing.
-- Separate confirmed evidence from hypotheses.
-- Return:
-  1. probable causes,
-  2. supporting evidence,
-  3. immediate mitigation,
-  4. next debugging step.
-"""
-
-
 RegisteredPromptVersions = {
-    "GOOD": "UHJvbXB0VmVyc2lvbjoy",
+    "GOOD": "UHJvbXB0VmVyc2lvbjo0",
     "BAD": "UHJvbXB0VmVyc2lvbjoz",
 }
 
 
-def get_system_prompt(version_id: str) -> str:
+def get_system_prompt_text(version_id: str) -> str:
     prompt = client.prompts.get(
         prompt_version_id=version_id,
     )
     return prompt.format(sdk="openai")["messages"][0]["content"]
 
 
-def register_system_prompt() -> None:
+def register_system_prompt(template_path: str) -> None:
+    with open(template_path, "r") as f:
+        system_prompt = f.read()
+
     prompt_version = client.prompts.create(
         name="incident-triage-system-prompt",
         version=PromptVersion(
             [
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT,
-                }
+                PromptMessage(
+                    role="system",
+                    content=system_prompt,
+                ),
             ],
             model_name="gemini-2.5-flash",
             model_provider="GOOGLE"
@@ -53,4 +40,6 @@ def register_system_prompt() -> None:
 
 
 if __name__ == "__main__":
-    register_system_prompt()
+    register_system_prompt(
+        template_path="./templates/system_prompt.j2",
+    )

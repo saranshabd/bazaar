@@ -1,14 +1,15 @@
 from phoenix.otel import register as register_phoenix_otel
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import create_agent
+from langchain.agents import create_agent, AgentState
+from langchain_core.messages import HumanMessage
+from langgraph.types import Command
 
 from openinference.instrumentation import using_prompt_template
 
-from prompt import get_system_prompt, RegisteredPromptVersions
+from prompt import get_system_prompt_text, RegisteredPromptVersions
 from tools import agent_tools
 
-# No need to configure API key since Phoenix is running locally.
 register_phoenix_otel(
     project_name="arize_phoenix_playground",
     auto_instrument=True,
@@ -19,7 +20,7 @@ model = ChatGoogleGenerativeAI(
 )
 
 system_prompt_version = RegisteredPromptVersions["GOOD"]
-system_prompt = get_system_prompt(version_id=system_prompt_version)
+system_prompt = get_system_prompt_text(version_id=system_prompt_version)
 
 agent = create_agent(
     model=model,
@@ -35,14 +36,13 @@ def run_incident(question: str):
         variables={}
     ):
         opt = agent.invoke(
-            {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": question,
-                    }
-                ]
-            }
+            Command(
+                update=AgentState(
+                    messages=[
+                        HumanMessage(content=question)
+                    ]
+                )
+            )
         )
 
     final_message = opt["messages"][-1]
