@@ -18,8 +18,21 @@
               "icon": "excalidraw-icon",
               "title": "hackathon_idea.excalidraw"
             }
+          },
+          {
+            "id": "8f471b3b145a5e46",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.12.7"
+              },
+              "icon": "lucide-book-up",
+              "title": "Release Notes 1.12.7"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -179,7 +192,7 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "e587e40d85357f40",
+  "active": "17fa615cf32c7d65",
   "lastOpenFiles": [
     "hackathon/focus_group_video_review_loop.md",
     "hackathon",

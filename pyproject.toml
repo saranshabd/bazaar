@@ -24,7 +24,9 @@ dependencies = [
     "langchain-google-vertexai (>=3.2.3,<4.0.0)",
     "openinference-instrumentation-vertexai (>=0.1.16,<0.2.0)",
     "google-cloud-storage (>=3.11.0,<4.0.0)",
-    "google-cloud-aiplatform[preview] (>=1.155.0,<2.0.0)"
+    "google-cloud-aiplatform[preview] (>=1.155.0,<2.0.0)",
+    "google-genai (>=2.8.0,<3.0.0)",
+    "matplotlib (>=3.10.9,<4.0.0)"
 ]
 
 
