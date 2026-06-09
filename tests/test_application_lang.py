@@ -1,3 +1,4 @@
+import asyncio
 import time
 from unittest import TestCase
 
@@ -41,3 +42,32 @@ class TestApplicationLang(TestCase):
             f"Failed to verify '{opt.cache_name}' cache in the content library."
         )
         print(f"total_token_count: {total_token_count}")
+
+    async def test_invoke_agent(self):
+
+        content_cache_name = "cachedContents/duhx4ijd5mlq9djal3bl0uz6zwx14g6f430wqmm6"
+
+        user_prompt = (
+            "I want feedback from young adults aged 18-30 who are fans of prestige TV dramas like Succession "
+            "and The Bear. They should be critical viewers who pay attention to dialogue, character development, "
+            "and pacing. Ask them: would they watch the next episode? What was the most memorable scene and why? "
+            "Rate the overall pilot on a scale of 1-10."
+        )
+
+        opt = self.lang.invoke_agent(user_prompt, content_cache_name)
+        assert opt is not None
+
+        print(f"opt: {opt.model_dump_json(indent=2)}")
+
+        async def delayed_shutdown(for_seconds: int):
+            await asyncio.sleep(for_seconds)
+            self.lang.shutdown()
+
+        shutdown_task = asyncio.create_task(
+            delayed_shutdown(for_seconds=10)
+        )
+
+        for agent_state in self.lang.stream_agent_state(run_id=opt.run_id):
+            print(agent_state)
+
+        await shutdown_task

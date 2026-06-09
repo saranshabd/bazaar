@@ -71,8 +71,7 @@ class AgentState(ContentReviewOptMixin):
     """
     run_id: str
     user_prompt: str
-    video_content_uri: str
-    gemini_content_cache_key: str
+    content_cache_key: str
     agent_input: AgentInput | None = None
     personas: list[Persona] = Field(default_factory=list)
 
