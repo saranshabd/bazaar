@@ -1,4 +1,8 @@
 .DS_Store
+
 .idea/
+.zed/
+.vscode/
+
 .env
 **/*__pycache__
