@@ -40,7 +40,7 @@ class ApplicationLang:
         self.agent_states = dict()
 
     @staticmethod
-    def new_run_id() -> str:
+    def create_run() -> str:
         return str(uuid4())
 
     def cache_video(self, video: UploadFile) -> CacheVideoOpt:
@@ -52,7 +52,7 @@ class ApplicationLang:
         return CacheVideoOpt(cache_name=cache_name)
 
     def invoke_agent(self, user_prompt: str, content_cache_name: str) -> InvokeAgentOpt:
-        run_id = self.new_run_id()
+        run_id = self.create_run()
         agent_state = AgentState(
             run_id=run_id,
             content_cache_key=content_cache_name,
@@ -90,7 +90,7 @@ class ApplicationLang:
 
     def shutdown(self):
         print("shutting down...")
-        for run_id in self.tasks:
+        for run_id in list(self.tasks):
             self.cancel_agent(run_id)
         assert len(self.tasks) == 0, "failed to cancel all tasks"
         assert len(self.agent_states) == 0, "failed to delete all agent states"

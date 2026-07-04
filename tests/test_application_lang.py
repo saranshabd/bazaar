@@ -1,13 +1,15 @@
 import asyncio
 import time
-from unittest import TestCase
+from unittest import IsolatedAsyncioTestCase
+import os
+import pytest
 
 from fastapi import UploadFile
 
 from focus_group_reviewer.api import ApplicationLang
 
 
-class TestApplicationLang(TestCase):
+class TestApplicationLang(IsolatedAsyncioTestCase):
 
     lang: ApplicationLang
 
@@ -17,7 +19,7 @@ class TestApplicationLang(TestCase):
 
     def test_video_cache(self):
         """
-        Elapsed time ~2.8s minutes.
+        Elapsed time ~2.8 minutes.
         Total token count 141,008.
         """
 
@@ -43,9 +45,12 @@ class TestApplicationLang(TestCase):
         )
         print(f"total_token_count: {total_token_count}")
 
+    @pytest.mark.asyncio
     async def test_invoke_agent(self):
-
-        content_cache_name = "cachedContents/duhx4ijd5mlq9djal3bl0uz6zwx14g6f430wqmm6"
+        content_cache_name = (
+            os.environ.get("FGR_CONTENT_CACHE_NAME") or "cachedContents/duhx4ijd5mlq9djal3bl0uz6zwx14g6f430wqmm6"
+        )
+        assert len(content_cache_name) > 0
 
         user_prompt = (
             "I want feedback from young adults aged 18-30 who are fans of prestige TV dramas like Succession "
@@ -63,11 +68,12 @@ class TestApplicationLang(TestCase):
             await asyncio.sleep(for_seconds)
             self.lang.shutdown()
 
+        delay_in_seconds = int(os.environ.get("FGR_DELAY_IN_SECONDS") or 10)
         shutdown_task = asyncio.create_task(
-            delayed_shutdown(for_seconds=10)
+            delayed_shutdown(for_seconds=delay_in_seconds)
         )
 
-        for agent_state in self.lang.stream_agent_state(run_id=opt.run_id):
+        async for agent_state in self.lang.stream_agent_state(run_id=opt.run_id):
             print(agent_state)
 
         await shutdown_task

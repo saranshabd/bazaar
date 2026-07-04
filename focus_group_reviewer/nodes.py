@@ -9,10 +9,6 @@ from focus_group_reviewer.state import AgentState, PersonaAgentState, ContentRev
 class AgentGraphNodes(abc.ABC):
 
     @abc.abstractmethod
-    def upload_video(self, state: AgentState) -> AgentState:
-        """Upload content to GCS, Gemini Files API and cache for later LLM queries."""
-
-    @abc.abstractmethod
     def prepare_input(self, state: AgentState) -> AgentState:
         """Construct `AgentInput` from the original user prompt."""
 
@@ -34,10 +30,6 @@ class AgentGraphNodes(abc.ABC):
 
 
 class GeminiAgentGraphNodes(AgentGraphNodes):
-
-    @override
-    def upload_video(self, state: AgentState) -> AgentState:
-        return state
 
     @override
     def prepare_input(self, state: AgentState) -> AgentState:
