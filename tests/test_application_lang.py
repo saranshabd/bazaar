@@ -7,6 +7,8 @@ import pytest
 from fastapi import UploadFile
 
 from focus_group_reviewer.api import ApplicationLang
+from focus_group_reviewer.nodes import GeminiAgentGraphNodes
+from focus_group_reviewer.state import AgentState
 
 
 class TestApplicationLang(IsolatedAsyncioTestCase):
@@ -45,21 +47,26 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
         )
         print(f"total_token_count: {total_token_count}")
 
-    @pytest.mark.asyncio
-    async def test_invoke_agent(self):
-        content_cache_name = (
-            os.environ.get("FGR_CONTENT_CACHE_NAME") or "cachedContents/duhx4ijd5mlq9djal3bl0uz6zwx14g6f430wqmm6"
-        )
-        assert len(content_cache_name) > 0
-
-        user_prompt = (
+    @property
+    def user_prompt(self):
+        return (
             "I want feedback from young adults aged 18-30 who are fans of prestige TV dramas like Succession "
             "and The Bear. They should be critical viewers who pay attention to dialogue, character development, "
             "and pacing. Ask them: would they watch the next episode? What was the most memorable scene and why? "
             "Rate the overall pilot on a scale of 1-10."
         )
 
-        opt = self.lang.invoke_agent(user_prompt, content_cache_name)
+    @property
+    def content_cache_name(self) -> str:
+        value = (
+            os.environ.get("FGR_CONTENT_CACHE_NAME") or "cachedContents/duhx4ijd5mlq9djal3bl0uz6zwx14g6f430wqmm6"
+        )
+        assert len(value) > 0
+        return value
+
+    @pytest.mark.asyncio
+    async def test_invoke_agent(self):
+        opt = self.lang.invoke_agent(self.user_prompt, self.content_cache_name)
         assert opt is not None
 
         print(f"opt: {opt.model_dump_json(indent=2)}")
@@ -77,3 +84,16 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
             print(agent_state)
 
         await shutdown_task
+
+    def test_prepare_input(self):
+        agent_state = AgentState(
+            run_id=self.lang.create_run(),
+            user_prompt=self.user_prompt,
+            content_cache_key=self.content_cache_name,
+        )
+
+        nodes = GeminiAgentGraphNodes()
+        updated_agent_state = nodes.prepare_input(agent_state)
+
+        assert updated_agent_state.agent_input is not None
+        print(updated_agent_state.agent_input.model_dump_json(indent=2))

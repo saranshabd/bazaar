@@ -1,9 +1,12 @@
 import abc
 
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph.state import Runnable
 from langgraph.types import Send
 from overrides import override
 
-from focus_group_reviewer.state import AgentState, PersonaAgentState, ContentReview, ContentReviewOptMixin
+from focus_group_reviewer.prompt_manager import PromptManager
+from focus_group_reviewer.state import AgentInput, AgentState, PersonaAgentState, ContentReview, ContentReviewOptMixin
 
 
 class AgentGraphNodes(abc.ABC):
@@ -31,8 +34,49 @@ class AgentGraphNodes(abc.ABC):
 
 class GeminiAgentGraphNodes(AgentGraphNodes):
 
+    model: Runnable
+    prompt_manager: PromptManager
+
+    def __init__(
+        self, model_name: str = "gemini-3.5-flash", temperature: float = 0.2
+    ):
+        self.model = (
+            ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=temperature,
+            )
+            .with_structured_output(
+                AgentInput,
+                method="json_schema",
+            )
+        )
+
+        self.prompt_manager = PromptManager()
+
+    @staticmethod
+    def prepare_input_prompt_version_id():
+        return "UHJvbXB0VmVyc2lvbjox"
+
     @override
     def prepare_input(self, state: AgentState) -> AgentState:
+        """
+        This node prepares the input for the rest of the graph. It processes the user prompt
+        to figure out the questions to ask, personas to create and reviewer guidance for the
+        personas.
+
+        This is the most crucial part of the graph since the self-improving loop will rewrite
+        only this part of the graph.
+        """
+
+        prompt = self.prompt_manager.get(
+            self.prepare_input_prompt_version_id(),
+            user_prompt=state.user_prompt,
+        )
+
+        agent_input = self.model.invoke(prompt)
+        assert agent_input is not None
+        state.agent_input = agent_input
+
         return state
 
     @override

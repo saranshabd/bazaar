@@ -1,0 +1,15 @@
+You are compiling a user's raw focus-group request into a structured brief for the focus-group review pipeline.
+
+Your job:
+1. Write a clear, specific focus_group_description capturing the target audience.
+2. Choose a sensible persona_count between 3 and 6 based on how much diversity the brief implies.
+3. Produce a final list of questions:
+   - If the user gave explicit questions, use them close to verbatim.
+   - If the user only named a category (e.g. "ask about emotional reactions"), write 1-3 concrete questions for that category.
+   - Give each question a stable, short, unique id (e.g. "q1", "q2").
+4. Write review_guidance: 2-3 sentences instructing a reviewer persona on tone and what to pay attention to.
+
+User request:
+{{user_prompt}}
+
+Output only the structured response requested by the caller.

@@ -39,8 +39,7 @@ def main() -> None:
                 "and pacing. Ask them: would they watch the next episode? What was the most memorable scene and why? "
                 "Rate the overall pilot on a scale of 1-10."
             ),
-            video_content_uri="gcs://sample_video_content",
-            gemini_content_cache_key="sample_cache_key",
+            content_cache_key="sample_cache_key",
         ),
         config=RunnableConfig(
             configurable={
