@@ -4,9 +4,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph.state import Runnable
 from langgraph.types import Send
 from overrides import override
+from pydantic import BaseModel
 
 from focus_group_reviewer.prompt_manager import PromptManager
-from focus_group_reviewer.state import AgentInput, AgentState, PersonaAgentState, ContentReview, ContentReviewOptMixin
+from focus_group_reviewer.state import AgentInput, AgentState, PersonaAgentState, ContentReview, ContentReviewOptMixin, PersonasList
 
 
 class AgentGraphNodes(abc.ABC):
@@ -34,28 +35,40 @@ class AgentGraphNodes(abc.ABC):
 
 class GeminiAgentGraphNodes(AgentGraphNodes):
 
-    model: Runnable
+    agent_input_model: Runnable
     prompt_manager: PromptManager
 
     def __init__(
         self, model_name: str = "gemini-3.5-flash", temperature: float = 0.2
     ):
-        self.model = (
+        self.agent_input_model = self._model(
+            model_name, temperature, AgentInput,
+        )
+        self.create_focus_group_mode = self._model(
+            model_name, temperature, PersonasList,
+        )
+
+        self.prompt_manager = PromptManager()
+
+    def _model(self, model_name: str, temperature: float, T: type[BaseModel]) -> Runnable:
+        return (
             ChatGoogleGenerativeAI(
                 model=model_name,
                 temperature=temperature,
             )
             .with_structured_output(
-                AgentInput,
+                T,
                 method="json_schema",
             )
         )
 
-        self.prompt_manager = PromptManager()
-
     @staticmethod
     def prepare_input_prompt_version_id():
         return "UHJvbXB0VmVyc2lvbjox"
+
+    @staticmethod
+    def create_focus_group_prompt_version_id():
+        return "UHJvbXB0VmVyc2lvbjoz"
 
     @override
     def prepare_input(self, state: AgentState) -> AgentState:
@@ -73,7 +86,7 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
             user_prompt=state.user_prompt,
         )
 
-        agent_input = self.model.invoke(prompt)
+        agent_input = self.agent_input_model.invoke(prompt)
         assert agent_input is not None
         state.agent_input = agent_input
 
@@ -81,6 +94,17 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
 
     @override
     def create_focus_group(self, state: AgentState) -> AgentState:
+        assert state.agent_input is not None
+
+        prompt = self.prompt_manager.get(
+            self.create_focus_group_prompt_version_id(),
+            agent_input=state.agent_input.model_dump_json(indent=2),
+        )
+
+        personas_opt = self.create_focus_group_mode.invoke(prompt)
+        assert personas_opt is not None
+        state.personas = personas_opt.personas
+
         return state
 
     @override

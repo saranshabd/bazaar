@@ -8,7 +8,7 @@ from fastapi import UploadFile
 
 from focus_group_reviewer.api import ApplicationLang
 from focus_group_reviewer.nodes import GeminiAgentGraphNodes
-from focus_group_reviewer.state import AgentState
+from focus_group_reviewer.state import AgentInput, AgentState, PersonasList, Question
 
 
 class TestApplicationLang(IsolatedAsyncioTestCase):
@@ -97,3 +97,31 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
 
         assert updated_agent_state.agent_input is not None
         print(updated_agent_state.agent_input.model_dump_json(indent=2))
+
+    def test_create_focus_group(self):
+        agent_state = AgentState(
+            run_id=self.lang.create_run(),
+            user_prompt=self.user_prompt,
+            content_cache_key=self.content_cache_name,
+            agent_input=AgentInput(
+                focus_group_description="Young adults aged 18-30 who are fans of prestige TV dramas",
+                persona_count=4,
+                questions=[
+                    Question(id="q1", question="Would you watch the next episode?"),
+                    Question(id="q2", question="What was the most memorable scene and why?"),
+                    Question(id="q3", question="Rate the overall pilot on a scale of 1-10."),
+                ],
+                review_guidance="Be critical but constructive; focus on dialogue, character development, and pacing.",
+            )
+        )
+
+        nodes = GeminiAgentGraphNodes()
+        updated_agent_state = nodes.create_focus_group(agent_state)
+
+        assert agent_state.agent_input is not None
+        assert (
+            len(updated_agent_state.personas) == agent_state.agent_input.persona_count
+        )
+
+        personas = PersonasList(personas=updated_agent_state.personas)
+        print(personas.model_dump_json(indent=2))

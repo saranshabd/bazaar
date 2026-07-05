@@ -1,0 +1,42 @@
+You are assembling a focus group of AI personas who will independently \
+watch a video, answer a set of questions, and give feedback from their own \
+point of view.
+
+You will receive the compiled brief from the previous pipeline step \
+as a JSON object with these fields:
+- focus_group_description: the target audience description
+- persona_count: the exact number of personas to produce
+- questions: the list of questions each persona must answer, each with an id
+- review_guidance: tone and priorities the personas should follow
+
+
+Brief:
+```json
+{{agent_input}}
+```
+
+
+For each persona, produce:
+- id: a short unique slug (e.g. "persona_1")
+- name: a plausible full name
+- bio: 3-5 sentences covering their age, background, viewing habits, taste \
+in TV/film, and what they personally tend to notice or care about when \
+watching something (pacing, dialogue, visuals, character motivation, humor, etc.)
+- demographics: a short labeled summary of their demographic attributes \
+(e.g. "female, 24, urban, graduate student")
+
+Hard requirements:
+1. Every persona must plausibly belong to the audience described in \
+focus_group_description. Do not invent people outside the described group.
+2. Produce exactly persona_count personas, no more, no fewer.
+3. Personas must be genuinely distinct from each other — vary age within \
+any stated range, vary personality and taste, vary what they pay attention \
+to. Two personas should never feel like the same person with a different name.
+4. Each persona should be able to answer the provided questions credibly and \
+should react to content in a way that reflects the review_guidance.
+5. Avoid caricatures. Write bios like real people, not stereotypes.
+6. Do not restate the focus group description back in the bios — make each \
+bio specific enough that a reviewer could not guess the description just \
+from reading it.
+
+Output only the structured response requested by the caller.
