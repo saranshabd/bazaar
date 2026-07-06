@@ -8,7 +8,15 @@ from fastapi import UploadFile
 
 from focus_group_reviewer.api import ApplicationLang
 from focus_group_reviewer.nodes import GeminiAgentGraphNodes
-from focus_group_reviewer.state import AgentInput, AgentState, PersonasList, Question
+from focus_group_reviewer.state import (
+    AgentInput,
+    AgentState,
+    ContentReviewOptMixin,
+    Persona,
+    PersonaAgentState,
+    PersonasList,
+    Question,
+)
 
 
 class TestApplicationLang(IsolatedAsyncioTestCase):
@@ -59,7 +67,7 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
     @property
     def content_cache_name(self) -> str:
         value = (
-            os.environ.get("FGR_CONTENT_CACHE_NAME") or "cachedContents/duhx4ijd5mlq9djal3bl0uz6zwx14g6f430wqmm6"
+            os.environ.get("FGR_CONTENT_CACHE_NAME") or "cachedContents/3wp9c9ojtqbk7l3afft8xybavlk6l43g1gt5rld9"
         )
         assert len(value) > 0
         return value
@@ -125,3 +133,63 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
 
         personas = PersonasList(personas=updated_agent_state.personas)
         print(personas.model_dump_json(indent=2))
+
+    def test_review_content(self):
+        personas = [
+            Persona(
+                id="persona_1",
+                name="Maya Chen",
+                bio=(
+                    "Maya is 24, a graduate student in film studies living in a major city. "
+                    "She watches prestige dramas closely and cares about dialogue, character "
+                    "arcs, and pacing. She notices when scenes earn their length and when they "
+                    "drag, and she has strong opinions about whether a pilot hooks her."
+                ),
+                demographics="female, 24, urban, graduate student",
+            )
+        ]
+        agent_state = PersonaAgentState(
+            run_id=self.lang.create_run(),
+            user_prompt=self.user_prompt,
+            content_cache_key=self.content_cache_name,
+            agent_input=AgentInput(
+                focus_group_description="Young adults aged 18-30 who are fans of prestige TV dramas",
+                persona_count=1,
+                questions=[
+                    Question(id="q1", question="Would you watch the next episode?"),
+                    Question(id="q2", question="What was the most memorable scene and why?"),
+                    Question(id="q3", question="Rate the overall pilot on a scale of 1-10."),
+                ],
+                review_guidance="Be critical but constructive; focus on dialogue, character development, and pacing.",
+            ),
+            personas=personas,
+            persona_id="persona_1",
+        )
+
+        nodes = GeminiAgentGraphNodes()
+        opt = nodes.review_content(agent_state)
+
+        assert isinstance(opt, ContentReviewOptMixin)
+        assert len(opt.reviews) == 1
+
+        review = opt.reviews[0]
+        assert review.persona_id == agent_state.persona_id
+
+        assert agent_state.agent_input is not None
+
+        expected_question_ids = {
+            q.id for q in agent_state.agent_input.questions
+        }
+        answered_question_ids = {a.question_id for a in review.answers}
+        assert answered_question_ids == expected_question_ids, (
+            f"Expected answers for {expected_question_ids}, got {answered_question_ids}"
+        )
+
+        assert len(review.annotations) >= 5, (
+            f"Expected at least 5 annotations, got {len(review.annotations)}"
+        )
+        for annotation in review.annotations:
+            assert 1 <= annotation.score <= 10
+            assert annotation.timestamp_sec >= 0
+
+        print(review.model_dump_json(indent=2))

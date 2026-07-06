@@ -1,4 +1,5 @@
 import abc
+import json
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph.state import Runnable
@@ -35,26 +36,28 @@ class AgentGraphNodes(abc.ABC):
 
 class GeminiAgentGraphNodes(AgentGraphNodes):
 
-    agent_input_model: Runnable
+    _model_name: str
+    _temperature: float
     prompt_manager: PromptManager
 
     def __init__(
         self, model_name: str = "gemini-3.5-flash", temperature: float = 0.2
     ):
-        self.agent_input_model = self._model(
-            model_name, temperature, AgentInput,
-        )
-        self.create_focus_group_mode = self._model(
-            model_name, temperature, PersonasList,
-        )
+        self._model_name = model_name
+        self._temperature = temperature
 
         self.prompt_manager = PromptManager()
 
-    def _model(self, model_name: str, temperature: float, T: type[BaseModel]) -> Runnable:
+    def _typed_model(
+        self,
+        T: type[BaseModel],
+        model_kwargs: dict = dict(),
+    ) -> Runnable:
         return (
             ChatGoogleGenerativeAI(
-                model=model_name,
-                temperature=temperature,
+                model=self._model_name,
+                temperature=self._temperature,
+                **model_kwargs,
             )
             .with_structured_output(
                 T,
@@ -69,6 +72,10 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
     @staticmethod
     def create_focus_group_prompt_version_id():
         return "UHJvbXB0VmVyc2lvbjoz"
+
+    @staticmethod
+    def review_content_prompt_version_id():
+        return "UHJvbXB0VmVyc2lvbjo1"
 
     @override
     def prepare_input(self, state: AgentState) -> AgentState:
@@ -86,7 +93,7 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
             user_prompt=state.user_prompt,
         )
 
-        agent_input = self.agent_input_model.invoke(prompt)
+        agent_input = self._typed_model(AgentInput).invoke(prompt)
         assert agent_input is not None
         state.agent_input = agent_input
 
@@ -101,7 +108,7 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
             agent_input=state.agent_input.model_dump_json(indent=2),
         )
 
-        personas_opt = self.create_focus_group_mode.invoke(prompt)
+        personas_opt = self._typed_model(PersonasList).invoke(prompt)
         assert personas_opt is not None
         state.personas = personas_opt.personas
 
@@ -113,18 +120,43 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
             Send(
                 node="review_content",
                 arg=PersonaAgentState(
-                    **state.model_dump(), persona_id="sample_persona_id"
+                    **state.model_dump(), persona_id=persona.id
                 ),
             )
+            for persona in state.personas
         ]
 
     @override
     def review_content(self, state: PersonaAgentState) -> ContentReviewOptMixin:
-        return ContentReviewOptMixin(
-            reviews=[
-                ContentReview(persona_id=state.persona_id, answers=[], annotations=[]),
-            ]
+        persona = next(p for p in state.personas if p.id == state.persona_id)
+
+        assert state.agent_input is not None
+
+        prompt = self.prompt_manager.get(
+            self.review_content_prompt_version_id(),
+            persona=persona.model_dump_json(indent=2),
+            review_guidance=state.agent_input.review_guidance,
+            questions=json.dumps(
+                [
+                    question.model_dump(mode="json")
+                    for question in state.agent_input.questions
+                ],
+                indent=2,
+            ),
         )
+
+        content_review = (
+            self._typed_model(
+                ContentReview,
+                model_kwargs={
+                    "cached_content": state.content_cache_key,
+                }
+            )
+            .invoke(prompt)
+        )
+        assert content_review is not None
+
+        return ContentReviewOptMixin(reviews=[content_review])
 
     @override
     def eval_reviews(self, state: AgentState) -> AgentState:
