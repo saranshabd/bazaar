@@ -1,9 +1,13 @@
 import asyncio
+from asyncio.futures import Future
+import traceback
+from typing import AsyncIterable
 from uuid import uuid4
 
 import fire
 import uvicorn
 from fastapi import FastAPI, UploadFile
+from fastapi.sse import EventSourceResponse
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
@@ -28,7 +32,6 @@ class ApplicationLang:
     graph: CompiledStateGraph[AgentState]
 
     tasks: dict[str, asyncio.Task]
-    agent_states: dict[str, AgentState]
 
     def __init__(self):
         self.content_library = GoogleStorageContentLibrary()
@@ -37,7 +40,6 @@ class ApplicationLang:
         self.graph = AgentGraphBuilder(nodes=nodes).build()
 
         self.tasks = dict()
-        self.agent_states = dict()
 
     @staticmethod
     def create_run() -> str:
@@ -61,15 +63,22 @@ class ApplicationLang:
         task = asyncio.create_task(
             self.graph.ainvoke(
                 agent_state,
-                config=RunnableConfig(
-                    configurable={
-                        "thread_id": run_id,
-                    }
-                )
+                config=self._runnable_config(run_id),
             )
         )
+
+        def done_callback(future: Future) -> None:
+            exc = future.exception()
+            if exc is None:
+                return
+            print(
+                f"run_id={run_id} failed with exception", traceback.format_exception(exc)
+            )
+            self.cancel_agent(run_id)
+
+        task.add_done_callback(done_callback)
+
         self.tasks[run_id] = task
-        self.agent_states[run_id] = agent_state
         return InvokeAgentOpt(run_id=run_id)
 
     def cancel_agent(self, run_id: str) -> None:
@@ -77,23 +86,32 @@ class ApplicationLang:
             return
         self.tasks[run_id].cancel()
         del self.tasks[run_id]
-        assert run_id in self.agent_states
-        del self.agent_states[run_id]
 
     async def stream_agent_state(self, run_id: str):
         while True:
             await asyncio.sleep(1)
             if run_id not in self.tasks:
                 break
-            assert run_id in self.agent_states
-            yield self.agent_states[run_id]
+            agent_state = await self.graph.aget_state(
+                config=self._runnable_config(run_id)
+            )
+            agent_state = AgentState(**agent_state.values)
+            yield agent_state
+            if agent_state.is_complete:
+                break
+
+    def _runnable_config(self, run_id) -> RunnableConfig:
+        return RunnableConfig(
+            configurable={
+                "thread_id": run_id,
+            }
+        )
 
     def shutdown(self):
         print("shutting down...")
         for run_id in list(self.tasks):
             self.cancel_agent(run_id)
         assert len(self.tasks) == 0, "failed to cancel all tasks"
-        assert len(self.agent_states) == 0, "failed to delete all agent states"
         print("shut down completed.")
 
 
@@ -119,6 +137,11 @@ class RemoteApplicationLang:
         @self.api.post("/agent/invoke")
         def invoke_agent(user_prompt: str, content_cache_name: str) -> InvokeAgentOpt:
             return self.lang.invoke_agent(user_prompt, content_cache_name)
+
+        @self.api.get("/agent/state/updates", response_class=EventSourceResponse)
+        async def agent_state_updates(run_id: str) -> AsyncIterable[AgentState]:
+            async for agent_state in self.lang.stream_agent_state(run_id=run_id):
+                yield agent_state
 
         return self
 

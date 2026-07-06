@@ -78,6 +78,7 @@ class AgentState(ContentReviewOptMixin):
     content_cache_key: str
     agent_input: AgentInput | None = None
     personas: list[Persona] = Field(default_factory=list)
+    is_complete: bool = False
 
 
 class PersonaAgentState(AgentState):

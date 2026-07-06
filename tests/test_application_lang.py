@@ -83,7 +83,7 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
             await asyncio.sleep(for_seconds)
             self.lang.shutdown()
 
-        delay_in_seconds = int(os.environ.get("FGR_DELAY_IN_SECONDS") or 10)
+        delay_in_seconds = int(os.environ.get("FGR_DELAY_IN_SECONDS") or 2 * 60)
         shutdown_task = asyncio.create_task(
             delayed_shutdown(for_seconds=delay_in_seconds)
         )

@@ -160,4 +160,5 @@ class GeminiAgentGraphNodes(AgentGraphNodes):
 
     @override
     def eval_reviews(self, state: AgentState) -> AgentState:
+        state.is_complete = True
         return state
