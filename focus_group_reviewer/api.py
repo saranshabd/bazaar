@@ -7,6 +7,7 @@ from uuid import uuid4
 import fire
 import uvicorn
 from fastapi import FastAPI, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.sse import EventSourceResponse
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
@@ -45,15 +46,18 @@ class ApplicationLang:
     def create_run() -> str:
         return str(uuid4())
 
-    def cache_video(self, video: UploadFile) -> CacheVideoOpt:
+    async def cache_video(self, video: UploadFile) -> CacheVideoOpt:
         assert video.filename is not None, "video must have a filename"
         assert video.filename.endswith(".mp4"), "video must have a filename"
-        cache_name = self.content_library.cache_file(
-            local_filename=video.filename,
+
+        video_bytes = await video.read()
+
+        cache_name = self.content_library.cache_content(
+            content=video_bytes,
         )
         return CacheVideoOpt(cache_name=cache_name)
 
-    def invoke_agent(self, user_prompt: str, content_cache_name: str) -> InvokeAgentOpt:
+    async def invoke_agent(self, user_prompt: str, content_cache_name: str) -> InvokeAgentOpt:
         run_id = self.create_run()
         agent_state = AgentState(
             run_id=run_id,
@@ -122,6 +126,12 @@ class RemoteApplicationLang:
 
     def __init__(self):
         self.api = FastAPI()
+        self.api.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         self.lang = ApplicationLang()
 
     @classmethod
@@ -131,12 +141,12 @@ class RemoteApplicationLang:
     def map_routes(self) -> "RemoteApplicationLang":
 
         @self.api.post("/content/cache-video")
-        def cache_video(video: UploadFile) -> CacheVideoOpt:
-            return self.lang.cache_video(video)
+        async def cache_video(video: UploadFile) -> CacheVideoOpt:
+            return await self.lang.cache_video(video)
 
         @self.api.post("/agent/invoke")
-        def invoke_agent(user_prompt: str, content_cache_name: str) -> InvokeAgentOpt:
-            return self.lang.invoke_agent(user_prompt, content_cache_name)
+        async def invoke_agent(user_prompt: str, content_cache_name: str) -> InvokeAgentOpt:
+            return await self.lang.invoke_agent(user_prompt, content_cache_name)
 
         @self.api.get("/agent/state/updates", response_class=EventSourceResponse)
         async def agent_state_updates(run_id: str) -> AsyncIterable[AgentState]:
@@ -146,7 +156,7 @@ class RemoteApplicationLang:
         return self
 
     def serve(self, port: int) -> None:
-        uvicorn.run(self.api, host="0.0.0.0", port=port)
+        uvicorn.run(self.api, host="0.0.0.0", port=port, log_level="info")
 
 
 def main(port: int = 9384) -> None:

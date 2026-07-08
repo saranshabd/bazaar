@@ -1,4 +1,5 @@
 import abc
+import io
 import os
 import time
 
@@ -8,6 +9,10 @@ from overrides import override
 
 
 class ContentLibrary(abc.ABC):
+
+    @abc.abstractmethod
+    def cache_content(self, content: bytes) -> str:
+        """Caches the raw bytes for LLM calls. Returns the cache name."""
 
     @abc.abstractmethod
     def cache_file(self, local_filename: str) -> str:
@@ -32,6 +37,30 @@ class GoogleStorageContentLibrary(ContentLibrary):
             project=os.environ["GCP_PROJECT_ID"],
             location=os.environ["GCS_LOCATION"],
         )
+
+    @override
+    def cache_content(self, content: bytes) -> str:
+        print("Uploading raw bytes to GenAI files...")
+        video_file = self.genai_client.files.upload(
+            file=io.BytesIO(content),
+            config=types.UploadFileConfig(mime_type="video/mp4"),
+        )
+        self._wait_for_processing(video_file)
+        print("Raw file bytes uploaded to GenAI ✅")
+
+        print("file uploaded to GenAI, now creating a cache for it...")
+        opt = self.genai_client.caches.create(
+            model="gemini-3.5-flash",
+            config=types.CreateCachedContentConfig(
+                contents=[video_file],
+                ttl="3600s",
+            ),
+        )
+        assert opt.name is not None
+        print("uploaded file cached in GenAI ✅")
+
+        return opt.name
+
 
     @override
     def cache_file(self, local_filename: str) -> str:

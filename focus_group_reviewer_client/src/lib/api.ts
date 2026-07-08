@@ -1,6 +1,7 @@
 import type { AgentState } from "./types";
 
-const API_BASE = "/api";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9384";
 
 export async function cacheVideo(
   file: File,
@@ -8,10 +9,24 @@ export async function cacheVideo(
   const formData = new FormData();
   formData.append("video", file);
 
-  const res = await fetch(`${API_BASE}/content/cache-video`, {
-    method: "POST",
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/content/cache-video`, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("cacheVideo timed out after 5 minutes");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
