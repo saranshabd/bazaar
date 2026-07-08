@@ -1,3 +1,3 @@
-from focus_group_reviewer.main import auto_instrument_phoenix_otel
+from agent.main import auto_instrument_phoenix_otel
 
 auto_instrument_phoenix_otel()

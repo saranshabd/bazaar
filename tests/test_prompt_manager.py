@@ -1,8 +1,8 @@
 import json
 
-from focus_group_reviewer.nodes import GeminiAgentGraphNodes
-from focus_group_reviewer.prompt_manager import PromptManager
-from focus_group_reviewer.state import AgentInput, Persona, Question
+from agent.nodes import GeminiAgentGraphNodes
+from agent.prompt_manager import PromptManager
+from agent.state import AgentInput, Persona, Question
 
 
 def test_set_prepare_input_prompt():

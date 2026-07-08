@@ -6,9 +6,9 @@ import pytest
 
 from fastapi import UploadFile
 
-from focus_group_reviewer.api import ApplicationLang
-from focus_group_reviewer.nodes import GeminiAgentGraphNodes
-from focus_group_reviewer.state import (
+from agent.api import ApplicationLang
+from agent.nodes import GeminiAgentGraphNodes
+from agent.state import (
     AgentInput,
     AgentState,
     ContentReviewOptMixin,
