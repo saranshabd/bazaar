@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Focus Group Reviewer",
+  title: "Bazaar",
   description:
     "Upload a video, generate a focus group of AI personas, and get timestamped, persona-grounded reviews.",
 };

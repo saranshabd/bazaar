@@ -101,7 +101,7 @@ export default function Home() {
       <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold tracking-tight">
-            Focus Group Reviewer
+            Bazaar
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-neutral-400">

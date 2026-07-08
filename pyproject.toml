@@ -1,7 +1,7 @@
 [project]
-name = "arize-pheonix-playground"
+name = "bazaar"
 version = "0.1.0"
-description = "Playground project for toying around with Phoenix and LLM observability auto-instrumentation."
+description = "AI focus groups for video feedback."
 authors = [
     {name = "Shabd Saran",email = "saranshabd@gmail.com"}
 ]
@@ -35,7 +35,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [{include="focus_group_reviewer"}]
+packages = [{include="agent"}]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

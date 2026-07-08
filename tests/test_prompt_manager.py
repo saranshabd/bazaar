@@ -1,8 +1,16 @@
 import json
+import os
+
+import pytest
 
 from agent.nodes import GeminiAgentGraphNodes
 from agent.prompt_manager import PromptManager
 from agent.state import AgentInput, Persona, Question
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("BAZAAR_RUN_INTEGRATION_TESTS") != "1",
+    reason="prompt manager tests call an external prompt registry",
+)
 
 
 def test_set_prepare_input_prompt():

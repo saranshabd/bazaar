@@ -1,7 +1,8 @@
 import asyncio
-import time
 from unittest import IsolatedAsyncioTestCase
 import os
+from pathlib import Path
+
 import pytest
 
 from fastapi import UploadFile
@@ -18,36 +19,42 @@ from agent.state import (
     Question,
 )
 
+pytestmark = pytest.mark.skipif(
+    os.environ.get("BAZAAR_RUN_INTEGRATION_TESTS") != "1",
+    reason="integration tests call external model, prompt registry, and video caching services",
+)
+
 
 class TestApplicationLang(IsolatedAsyncioTestCase):
 
     lang: ApplicationLang
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def setUp(self):
         self.lang = ApplicationLang()
 
-    def test_video_cache(self):
+    async def test_video_cache(self):
         """
-        Elapsed time ~2.8 minutes.
-        Total token count 141,008.
+        Requires BAZAAR_SAMPLE_VIDEO_PATH to point to a local MP4.
         """
 
-        filename = "./focus_group_reviewer/artifacts/FRIENDS_Pilot.mp4"
-        with open(filename, "rb") as f:
-            start = time.perf_counter()
-            opt = self.lang.cache_video(
+        filename = os.environ.get("BAZAAR_SAMPLE_VIDEO_PATH")
+        if filename is None:
+            pytest.skip("BAZAAR_SAMPLE_VIDEO_PATH is required")
+
+        path = Path(filename)
+        assert path.exists(), f"sample video does not exist: {path}"
+
+        with path.open("rb") as f:
+            opt = await self.lang.cache_video(
                 video=UploadFile(
-                    filename=filename,
+                    filename=path.name,
                     file=f,
                 )
             )
-            elapsed_time = time.perf_counter() - start
 
         assert opt is not None
 
         print(f"opt: '{opt}'")
-        print(f"elapsed_time: {elapsed_time}s")
 
         total_token_count = self.lang.content_library.peek_cache(opt.cache_name)
         assert total_token_count is not None, (
@@ -66,15 +73,15 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
 
     @property
     def content_cache_name(self) -> str:
-        value = (
-            os.environ.get("FGR_CONTENT_CACHE_NAME") or "cachedContents/3wp9c9ojtqbk7l3afft8xybavlk6l43g1gt5rld9"
-        )
+        value = os.environ.get("BAZAAR_CONTENT_CACHE_NAME")
+        if value is None:
+            pytest.skip("BAZAAR_CONTENT_CACHE_NAME is required")
         assert len(value) > 0
         return value
 
     @pytest.mark.asyncio
     async def test_invoke_agent(self):
-        opt = self.lang.invoke_agent(self.user_prompt, self.content_cache_name)
+        opt = await self.lang.invoke_agent(self.user_prompt, self.content_cache_name)
         assert opt is not None
 
         print(f"opt: {opt.model_dump_json(indent=2)}")
@@ -83,7 +90,7 @@ class TestApplicationLang(IsolatedAsyncioTestCase):
             await asyncio.sleep(for_seconds)
             self.lang.shutdown()
 
-        delay_in_seconds = int(os.environ.get("FGR_DELAY_IN_SECONDS") or 2 * 60)
+        delay_in_seconds = int(os.environ.get("BAZAAR_DELAY_IN_SECONDS") or 2 * 60)
         shutdown_task = asyncio.create_task(
             delayed_shutdown(for_seconds=delay_in_seconds)
         )
